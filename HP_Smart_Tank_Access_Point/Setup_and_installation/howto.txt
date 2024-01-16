@@ -1,0 +1,1 @@
+https://snapcraft.io/install/hp-printer-app/raspbian
