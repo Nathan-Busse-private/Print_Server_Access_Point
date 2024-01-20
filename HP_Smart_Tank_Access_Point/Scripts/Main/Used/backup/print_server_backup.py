@@ -40,24 +40,13 @@
 # cancel any active print job if the printer loses power in the middle of printing a page
 # to avoid print jams and other hardware failure caused by power failure.
 
-# Hostname Commands
-#-------------------
+# IPv4 address: 192.168.0.102
+# Hostname: printserver
+# ping -c 4 printserver
 
-# hostname: printserver
-# hostname -I: 192.168.0.120
-
-# Names, Addresses and connection
-#---------------------------------
-
-# Raspberry Pi Hostname: printserver
-# Raspberry Pi_IPv4_address: 192.168.0.120
-# Printer_IPv4_address: 192.168.0.102
-# CUPS_web_UI_URL: https://printserver:631
-# Queue name: HP_Smart_Tank_580-590_series
-# Connection: ipps://HP%20Smart%20Tank%20580-590%20series%20%5BF8FE59%5D._ipps._tcp.local/
 
 # Packages
-# ----------
+#----------
 
 import cups
 import socket
@@ -65,29 +54,16 @@ import threading
 import time
 import os
 import pickle
-from zeroconf import ServiceInfo, Zeroconf
 
 class PrintServer:
-    def __init__(self, printer_queue_name, port):
-        self.printer_queue_name = printer_queue_name
-        self.port = port
+    def __init__(self, printer_name):
+        self.printer_name = printer_name
         self.job_queue_file = "print_job_queue.pkl"
         self.conn = cups.Connection()
 
-        # Zeroconf initialization
-        self.zeroconf = Zeroconf()
-        self.service_info = ServiceInfo(
-            "_ipp._tcp.local.",
-            f"{printer_queue_name}._ipp._tcp.local.",
-            socket.inet_aton(socket.gethostbyname(socket.gethostname())),
-            port,
-            properties={"txtvers": "1", "rp": "printers/printqueue"},
-        )
-        self.zeroconf.register_service(self.service_info)
-
     def check_printer_status(self):
         try:
-            status = self.conn.getPrinterAttributes(self.printer_queue_name)['printer-state']
+            status = self.conn.getPrinterAttributes(self.printer_name)['printer-state']
             return status
         except Exception as e:
             print(f"Error checking printer status: {e}")
@@ -97,7 +73,7 @@ class PrintServer:
         try:
             job_title = 'PrintJob'
             options = {'media': 'A4', 'fit-to-page': True}
-            response = self.conn.printFile(self.printer_queue_name, document_content, job_title, options)
+            response = self.conn.printFile(self.printer_name, document_content, job_title, options)
             job_id = response.split()[1]
             print(f"Print job submitted successfully. Job ID: {job_id}")
             return job_id
@@ -144,11 +120,6 @@ class PrintServer:
         except Exception as e:
             print(f"Error clearing print job queue: {e}")
 
-    def __del__(self):
-        # Unregister Zeroconf service on object deletion
-        self.zeroconf.unregister_service(self.service_info)
-        self.zeroconf.close()
-
 def client_handler(client_socket, server):
     try:
         document_content = client_socket.recv(4096)  # Adjust buffer size based on your needs
@@ -194,16 +165,14 @@ def check_and_resume_jobs(server):
                 server.cancel_print_job(job_id)
 
 def main():
-    printer_queue_name = "HP_Smart_Tank_580-590_series"  # Replace with your printer's queue name
-    port = 12345  # Choose a suitable port number
-
-    server = PrintServer(printer_queue_name, port)
+    printer_name = "HP_Smart_Tank_580-590_series_"  # Replace with your printer's name
+    server = PrintServer(printer_name)
 
     # Check and resume any interrupted print jobs from the queue on startup
     check_and_resume_jobs(server)
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('0.0.0.0', port))  # Bind to any available network interface on the chosen port
+    server_socket.bind(('0.0.0.0', 12345))  # Bind to any available network interface on port 12345
     server_socket.listen(1)
 
     print("Server is listening for incoming print job requests...")
