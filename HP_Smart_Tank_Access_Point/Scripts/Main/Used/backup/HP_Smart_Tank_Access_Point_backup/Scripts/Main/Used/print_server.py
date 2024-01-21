@@ -145,7 +145,7 @@ class PrintServer:
             print(f"Error clearing print job queue: {e}")
 
     def __del__(self):
-        # Unregister Zeroconf service on object deletion                                                                                                                                                                     
+        # Unregister Zeroconf service on object deletion
         self.zeroconf.unregister_service(self.service_info)
         self.zeroconf.close()
 
