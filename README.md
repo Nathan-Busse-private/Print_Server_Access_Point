@@ -1,3 +1,10 @@
+# Bugs:
+
+● Print_Server falls asleep.
+
+● Continues print jobs that have been stored in print queues.
+_______________________________________
+
 
 Today on Monday 22 January 2024 23:40 PM SAST I have finalley made a breakthrough!!!!!
 
