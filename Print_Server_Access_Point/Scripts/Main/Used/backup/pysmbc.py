@@ -5,7 +5,6 @@ import time
 import os
 import pickle
 from smb.SMBHandler import SMBHandler  # Import SMBHandler for Samba integration
-from zeroconf import ServiceInfo, Zeroconf  # Import Zeroconf for service discovery
 
 class PrintServer:
     def __init__(self, printer_queue_name, port):
@@ -13,17 +12,6 @@ class PrintServer:
         self.port = port
         self.job_queue_file = "print_job_queue.pkl"
         self.conn = cups.Connection()
-
-        # Zeroconf initialization
-        self.zeroconf = Zeroconf()
-        self.service_info = ServiceInfo(
-            "_ipp._tcp.local.",
-            f"{printer_queue_name}._ipp._tcp.local.",
-            socket.inet_aton(socket.gethostbyname(socket.gethostname())),
-            port,
-            properties={"txtvers": "1", "rp": "printers/printqueue"},
-        )
-        self.zeroconf.register_service(self.service_info)
 
     def check_printer_status(self):
         try:
@@ -35,6 +23,7 @@ class PrintServer:
 
     def print_document(self, document_content):
         try:
+            # Send the print job to CUPS
             job_title = 'PrintJob'
             options = {'media': 'A4', 'fit-to-page': True}
             response = self.conn.printFile(self.printer_queue_name, document_content, job_title, options)
@@ -54,6 +43,7 @@ class PrintServer:
 
     def smb_print_document(self, document_content):
         try:
+            # Connect to Samba share using SMBHandler
             with SMBHandler('remote_share') as smb:
                 remote_path = 'remote_path/'  # Adjust as needed
                 smb.storeFile(remote_path, 'PrintJob.txt', document_content)
@@ -93,11 +83,6 @@ class PrintServer:
             print("Print job queue not found.")
         except Exception as e:
             print(f"Error clearing print job queue: {e}")
-
-    def __del__(self):
-        # Unregister Zeroconf service on object deletion
-        self.zeroconf.unregister_service(self.service_info)
-        self.zeroconf.close()
 
 def client_handler(client_socket, server):
     try:
